@@ -8,12 +8,13 @@ export const metadata: Metadata = {
   description: "验证您的AI拉片助手账户邮箱",
 }
 
-export default function VerifyEmailPage({
+export default async function VerifyEmailPage({
   searchParams,
 }: {
-  searchParams: { token?: string; email?: string }
+  searchParams: Promise<{ token?: string; email?: string }>
 }) {
-  const { token, email } = searchParams
+  const resolvedSearchParams = await searchParams
+  const { token, email } = resolvedSearchParams
 
   return (
     <div className="container flex h-screen w-screen flex-col items-center justify-center">
