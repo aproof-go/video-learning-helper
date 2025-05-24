@@ -169,6 +169,118 @@ export class DatabaseManager {
     console.log(`✅ Task retrieved from ${this.environment} environment:`, data ? 'Found' : 'Not found');
     return data;
   }
+
+  // 视频相关方法
+  async createVideo(videoData: any) {
+    console.log(`📝 Creating video in ${this.environment} environment:`, videoData.title);
+    
+    const { data, error } = await this.supabase
+      .from('videos')
+      .insert(videoData)
+      .select()
+      .single();
+    
+    if (error) {
+      console.error(`❌ Database Error (${this.environment}.videos):`, error);
+      throw error;
+    }
+    
+    console.log(`✅ Video created in ${this.environment} environment:`, data.id);
+    return data;
+  }
+
+  async getUserVideos(userId: string, skip: number = 0, limit: number = 100) {
+    console.log(`🔍 Getting user videos in ${this.environment} environment for user: ${userId}`);
+    
+    const { data, error } = await this.supabase
+      .from('videos')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .range(skip, skip + limit - 1);
+    
+    if (error) {
+      console.error(`❌ Database Error (${this.environment}.videos):`, error);
+      throw error;
+    }
+    
+    console.log(`✅ Videos retrieved from ${this.environment} environment:`, data?.length || 0);
+    return data || [];
+  }
+
+  async getVideoById(videoId: string) {
+    console.log(`🔍 Getting video by ID in ${this.environment} environment: ${videoId}`);
+    
+    const { data, error } = await this.supabase
+      .from('videos')
+      .select('*')
+      .eq('id', videoId)
+      .single();
+    
+    if (error && error.code !== 'PGRST116') {
+      console.error(`❌ Database Error (${this.environment}.videos):`, error);
+      throw error;
+    }
+    
+    console.log(`✅ Video retrieved from ${this.environment} environment:`, data ? 'Found' : 'Not found');
+    return data;
+  }
+
+  async getVideoAnalysisTasks(videoId: string) {
+    console.log(`🔍 Getting video analysis tasks in ${this.environment} environment for video: ${videoId}`);
+    
+    const { data, error } = await this.supabase
+      .from('analysis_tasks')
+      .select('*')
+      .eq('video_id', videoId)
+      .order('created_at', { ascending: false });
+    
+    if (error) {
+      console.error(`❌ Database Error (${this.environment}.analysis_tasks):`, error);
+      throw error;
+    }
+    
+    console.log(`✅ Video analysis tasks retrieved from ${this.environment} environment:`, data?.length || 0);
+    return data || [];
+  }
+
+  async updateVideo(videoId: string, updates: any) {
+    console.log(`📝 Updating video in ${this.environment} environment: ${videoId}`);
+    
+    const { data, error } = await this.supabase
+      .from('videos')
+      .update(updates)
+      .eq('id', videoId)
+      .select()
+      .single();
+    
+    if (error) {
+      console.error(`❌ Database Error (${this.environment}.videos):`, error);
+      throw error;
+    }
+    
+    console.log(`✅ Video updated in ${this.environment} environment:`, videoId);
+    return data;
+  }
+
+  async deleteVideo(videoId: string) {
+    console.log(`🗑️ Deleting video in ${this.environment} environment: ${videoId}`);
+    
+    const { data, error } = await this.supabase
+      .from('videos')
+      .delete()
+      .eq('id', videoId)
+      .select()
+      .single();
+    
+    if (error) {
+      console.error(`❌ Database Error (${this.environment}.videos):`, error);
+      throw error;
+    }
+    
+    console.log(`✅ Video deleted from ${this.environment} environment:`, videoId);
+    return data;
+  }
 }
 
 export const dbManager = new DatabaseManager(); 
