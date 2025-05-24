@@ -1,21 +1,38 @@
-// API配置 - 修复Vercel部署问题
+// API配置 - 支持本地开发和生产环境
 const getApiBaseUrl = () => {
-  // 如果设置了环境变量，使用环境变量
+  // 1. 优先使用环境变量配置
   if (process.env.NEXT_PUBLIC_API_URL) {
     return process.env.NEXT_PUBLIC_API_URL;
   }
   
-  // 在浏览器环境中，使用当前域名
+  // 2. 检查是否在开发环境
+  if (process.env.NODE_ENV === 'development') {
+    // 本地开发环境：检查是否有独立的后端服务
+    if (typeof window !== 'undefined') {
+      // 浏览器环境：尝试连接本地后端，如果失败则使用当前域名
+      return process.env.NEXT_PUBLIC_DEV_API_URL || 'http://localhost:8000';
+    }
+    return 'http://localhost:8000'; // 服务器端渲染时的默认值
+  }
+  
+  // 3. 生产环境：使用当前域名
   if (typeof window !== 'undefined') {
     return window.location.origin;
   }
   
-  // 在服务器环境中，默认使用相对路径
+  // 4. 服务器环境中的备用方案
   return '';
 };
 
 const API_BASE_URL = getApiBaseUrl();
 export const BACKEND_BASE_URL = API_BASE_URL;
+
+console.log('🔧 API Configuration:', {
+  NODE_ENV: process.env.NODE_ENV,
+  API_BASE_URL,
+  NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
+  NEXT_PUBLIC_DEV_API_URL: process.env.NEXT_PUBLIC_DEV_API_URL
+});
 
 // API请求类型
 export interface LoginRequest {
