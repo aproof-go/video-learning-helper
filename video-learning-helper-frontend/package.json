@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbo",
+    "dev": "next dev",
     "dev:fast": "next dev --turbo --port 3000",
     "dev:hot": "next dev --turbo --port 3000 --hostname 0.0.0.0",
     "build": "next build",
@@ -76,5 +76,8 @@
     "postcss": "^8",
     "tailwindcss": "^3.4.17",
     "typescript": "^5"
+  },
+  "npmConfig": {
+    "legacy-peer-deps": true
   }
 }
