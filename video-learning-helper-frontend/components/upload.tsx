@@ -155,8 +155,6 @@ export function Upload() {
       if (err instanceof ApiError) {
         if (err.status === 401) {
           setError("登录已过期，请重新登录")
-        } else if (err.status === 413) {
-          setError("文件太大，请选择较小的文件")
         } else if (err.status === 422) {
           setError(`数据验证失败: ${err.message}`)
         } else {
