@@ -183,7 +183,7 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         email: str = payload.get("sub")
         if email is None:
             raise credentials_exception
-    except jwt.PyJWTError:
+    except jwt.InvalidTokenError:
         raise credentials_exception
     
     # 从Supabase数据库获取用户
@@ -198,11 +198,8 @@ def decode_access_token(token: str):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return payload
-    except jwt.PyJWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials"
-        )
+    except jwt.InvalidTokenError:
+        return None
 
 async def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(security)):
     """获取当前用户ID"""
