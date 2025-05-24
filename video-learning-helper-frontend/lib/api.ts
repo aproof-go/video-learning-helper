@@ -1,35 +1,79 @@
-// API配置 - 支持本地开发和生产环境
+// API配置 - 支持测试、生产环境分离
+const getEnvironment = (): 'development' | 'production' => {
+  // 1. 检查 Vercel 环境变量
+  if (process.env.VERCEL_ENV === 'production') return 'production';
+  
+  // 2. 检查 NODE_ENV
+  if (process.env.NODE_ENV === 'production') return 'production';
+  
+  // 3. 默认为测试环境（包括本地开发）
+  return 'development';
+};
+
 const getApiBaseUrl = () => {
-  // 1. 优先使用环境变量配置
+  const environment = getEnvironment();
+  
+  // 1. 优先使用直接的环境变量配置
   if (process.env.NEXT_PUBLIC_API_URL) {
     return process.env.NEXT_PUBLIC_API_URL;
   }
   
-  // 2. 检查是否在开发环境
-  if (process.env.NODE_ENV === 'development') {
-    // 本地开发环境：检查是否有独立的后端服务
-    if (typeof window !== 'undefined') {
-      // 浏览器环境：尝试连接本地后端，如果失败则使用当前域名
+  // 2. 根据环境选择对应的API URL
+  switch (environment) {
+    case 'development':
+      // 测试环境：本地开发或测试部署
       return process.env.NEXT_PUBLIC_DEV_API_URL || 'http://localhost:8000';
-    }
-    return 'http://localhost:8000'; // 服务器端渲染时的默认值
+    
+    case 'production':
+      // 生产环境：使用当前域名
+      if (typeof window !== 'undefined') {
+        return window.location.origin;
+      }
+      return '';
+    
+    default:
+      return 'http://localhost:8000';
   }
+};
+
+const getSupabaseConfig = () => {
+  const environment = getEnvironment();
   
-  // 3. 生产环境：使用当前域名
-  if (typeof window !== 'undefined') {
-    return window.location.origin;
+  switch (environment) {
+    case 'development':
+      // 测试环境：使用现有配置
+      return {
+        url: process.env.NEXT_PUBLIC_SUPABASE_URL_DEV || process.env.NEXT_PUBLIC_SUPABASE_URL,
+        anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY_DEV || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      };
+    
+    case 'production':
+      // 生产环境：独立的 ap-production 项目
+      return {
+        url: process.env.NEXT_PUBLIC_SUPABASE_URL_PROD || process.env.NEXT_PUBLIC_SUPABASE_URL,
+        anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY_PROD || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      };
+    
+    default:
+      return {
+        url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+        anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      };
   }
-  
-  // 4. 服务器环境中的备用方案
-  return '';
 };
 
 const API_BASE_URL = getApiBaseUrl();
+const SUPABASE_CONFIG = getSupabaseConfig();
+const ENVIRONMENT = getEnvironment();
+
 export const BACKEND_BASE_URL = API_BASE_URL;
 
 console.log('🔧 API Configuration:', {
+  ENVIRONMENT,
   NODE_ENV: process.env.NODE_ENV,
+  VERCEL_ENV: process.env.VERCEL_ENV,
   API_BASE_URL,
+  SUPABASE_URL: SUPABASE_CONFIG.url,
   NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
   NEXT_PUBLIC_DEV_API_URL: process.env.NEXT_PUBLIC_DEV_API_URL
 });
@@ -135,7 +179,7 @@ async function apiRequest<T>(
     },
   }
   
-  console.log('🌐 apiRequest: URL:', url)
+  console.log(`🌐 apiRequest (${ENVIRONMENT}): URL:`, url)
   console.log('⚙️ apiRequest: Final config:', config)
   console.log('📋 apiRequest: Headers:', config.headers)
   console.log('📦 apiRequest: Body:', config.body)

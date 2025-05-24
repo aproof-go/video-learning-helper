@@ -1,27 +1,19 @@
 import os
 from typing import Optional, List, Dict, Any
-from dotenv import load_dotenv
 from supabase import create_client, Client
 from datetime import datetime
 import uuid
 
-# 加载环境变量
-load_dotenv("config.env")
+from app.core.config import get_settings
 
-# Supabase配置
-SUPABASE_URL = os.getenv("SUPABASE_URL", "https://tjxqzmrmybrcmkflaimq.supabase.co")
-SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRqeHF6bXJteWJyY21rZmxhaW1xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgwMTQ2NDIsImV4cCI6MjA2MzU5MDY0Mn0.uOYYkrZP2VFLwNkoU96Qo94A5oh9wJbTIlGnChH2pCg")
-SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")  # Optional service key
+# 获取配置
+settings = get_settings()
 
 # 创建Supabase客户端
-if SUPABASE_SERVICE_KEY:
-    # Use service key if available (bypasses RLS)
-    supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
-    print("✅ Using Supabase service key (RLS bypassed)")
-else:
-    # Fall back to anon key
-    supabase: Client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
-    print("⚠️ Using Supabase anon key (RLS restrictions apply)")
+supabase: Client = create_client(settings.supabase_url, settings.supabase_key)
+
+print(f"✅ 使用 {settings.node_env.upper()} 环境的 Supabase 数据库")
+print(f"🗄️ 数据库URL: {settings.supabase_url}")
 
 # In-memory storage for videos when RLS blocks insertion
 _video_storage = {}
@@ -34,46 +26,66 @@ class DatabaseManager:
         self.client = supabase
     
     # 用户相关方法
-    async def create_user(self, email: str, name: Optional[str], password_hash: str) -> dict:
-        """创建新用户"""
-        user_data = {
-            "email": email,
-            "name": name,
-            "password_hash": password_hash
+    async def create_user(self, user_data: Dict[str, Any]) -> dict:
+        """创建用户"""
+        user_record = {
+            "id": str(uuid.uuid4()),
+            "email": user_data.get("email"),
+            "name": user_data.get("name"),
+            "username": user_data.get("username"),
+            "password_hash": user_data.get("password_hash"),
+            "avatar_url": user_data.get("avatar_url"),
+            "created_at": datetime.utcnow().isoformat(),
+            "updated_at": datetime.utcnow().isoformat()
         }
         
-        result = self.client.table("users").insert(user_data).execute()
-        
-        if result.data:
-            return result.data[0]
-        else:
-            raise Exception(f"Failed to create user: {result}")
+        try:
+            result = self.client.table("users").insert(user_record).execute()
+            if result.data:
+                return result.data[0]
+            else:
+                raise Exception(f"用户创建失败: {result}")
+        except Exception as e:
+            raise Exception(f"Failed to create user: {e}")
     
     async def get_user_by_email(self, email: str) -> Optional[dict]:
         """根据邮箱获取用户"""
-        result = self.client.table("users").select("*").eq("email", email).execute()
-        
-        if result.data:
-            return result.data[0]
+        try:
+            result = self.client.table("users").select("*").eq("email", email).execute()
+            if result.data:
+                return result.data[0]
+        except Exception as e:
+            print(f"Warning: Failed to query user by email from Supabase: {e}")
+        return None
+    
+    async def get_user_by_username(self, username: str) -> Optional[dict]:
+        """根据用户名获取用户"""
+        try:
+            result = self.client.table("users").select("*").eq("username", username).execute()
+            if result.data:
+                return result.data[0]
+        except Exception as e:
+            print(f"Warning: Failed to query user by username from Supabase: {e}")
         return None
     
     async def get_user_by_id(self, user_id: str) -> Optional[dict]:
         """根据ID获取用户"""
-        result = self.client.table("users").select("*").eq("id", user_id).execute()
-        
-        if result.data:
-            return result.data[0]
+        try:
+            result = self.client.table("users").select("*").eq("id", user_id).execute()
+            if result.data:
+                return result.data[0]
+        except Exception as e:
+            print(f"Warning: Failed to query user by ID from Supabase: {e}")
         return None
-    
-    async def email_exists(self, email: str) -> bool:
-        """检查邮箱是否已存在"""
-        result = self.client.table("users").select("id").eq("email", email).execute()
-        return len(result.data) > 0
     
     async def get_user_count(self) -> int:
         """获取用户总数"""
-        result = self.client.table("users").select("id", count="exact").execute()
-        return result.count or 0
+        try:
+            result = self.client.table("users").select("id", count="exact").execute()
+            return result.count or 0
+        except Exception as e:
+            print(f"Warning: Failed to get user count from Supabase: {e}")
+            return 0
     
     # 视频相关方法
     async def create_video(self, video_data: Dict[str, Any]) -> dict:
@@ -99,7 +111,7 @@ class DatabaseManager:
             # Try to insert into Supabase
             result = self.client.table("videos").insert(video_record).execute()
             if result.data:
-                print(f"✅ Video stored in Supabase: {video_record['id']}")
+                print(f"✅ Video stored in Supabase ({settings.node_env}): {video_record['id']}")
                 return result.data[0]
             else:
                 raise Exception(f"Supabase insert failed: {result}")
