@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>前端状态测试</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-item { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .loading { background-color: #fff3cd; border-color: #ffeaa7; }
+    </style>
+</head>
+<body>
+    <h1>AI拉片助手 - 前端状态测试</h1>
+    
+    <div id="frontend-test" class="test-item loading">
+        <h3>🌐 前端服务测试</h3>
+        <p id="frontend-status">测试中...</p>
+    </div>
+    
+    <div id="backend-test" class="test-item loading">
+        <h3>🔧 后端API测试</h3>
+        <p id="backend-status">测试中...</p>
+    </div>
+    
+    <div id="css-test" class="test-item loading">
+        <h3>🎨 CSS样式测试</h3>
+        <p id="css-status">测试中...</p>
+    </div>
+    
+    <div id="registration-test" class="test-item loading">
+        <h3>📝 注册功能测试</h3>
+        <p id="registration-status">准备中...</p>
+        <button id="test-registration" onclick="testRegistration()">测试注册</button>
+    </div>
+    
+    <div id="login-test" class="test-item loading">
+        <h3>🔐 登录功能测试</h3>
+        <p id="login-status">准备中...</p>
+        <button id="test-login" onclick="testLogin()">测试登录</button>
+    </div>
+
+    <script>
+        // 测试前端服务
+        async function testFrontend() {
+            try {
+                const response = await fetch('http://localhost:3000');
+                if (response.ok) {
+                    document.getElementById('frontend-status').textContent = '✅ 前端服务正常运行 (localhost:3000)';
+                    document.getElementById('frontend-test').className = 'test-item success';
+                } else {
+                    document.getElementById('frontend-status').textContent = '❌ 前端服务响应异常';
+                    document.getElementById('frontend-test').className = 'test-item error';
+                }
+            } catch (error) {
+                document.getElementById('frontend-status').textContent = '❌ 前端服务连接失败: ' + error.message;
+                document.getElementById('frontend-test').className = 'test-item error';
+            }
+        }
+
+        // 测试后端API
+        async function testBackend() {
+            try {
+                const response = await fetch('http://localhost:8000/health');
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('backend-status').textContent = 
+                        `✅ 后端API正常运行 - 版本: ${data.version}, 数据库: ${data.database}, 用户数: ${data.user_count}`;
+                    document.getElementById('backend-test').className = 'test-item success';
+                } else {
+                    document.getElementById('backend-status').textContent = '❌ 后端API响应异常';
+                    document.getElementById('backend-test').className = 'test-item error';
+                }
+            } catch (error) {
+                document.getElementById('backend-status').textContent = '❌ 后端API连接失败: ' + error.message;
+                document.getElementById('backend-test').className = 'test-item error';
+            }
+        }
+
+        // 测试CSS样式
+        function testCSS() {
+            const testElement = document.createElement('div');
+            testElement.style.cssText = 'position: absolute; top: -9999px; left: -9999px;';
+            testElement.className = 'test-tailwind bg-blue-500 text-white p-4';
+            document.body.appendChild(testElement);
+            
+            const computedStyle = window.getComputedStyle(testElement);
+            const hasBackground = computedStyle.backgroundColor !== 'rgba(0, 0, 0, 0)' && computedStyle.backgroundColor !== 'transparent';
+            
+            document.body.removeChild(testElement);
+            
+            if (hasBackground) {
+                document.getElementById('css-status').textContent = '✅ CSS样式正常加载 (Tailwind CSS工作正常)';
+                document.getElementById('css-test').className = 'test-item success';
+            } else {
+                document.getElementById('css-status').textContent = '⚠️ CSS样式可能未正确加载';
+                document.getElementById('css-test').className = 'test-item error';
+            }
+        }
+
+        // 测试注册功能
+        async function testRegistration() {
+            const testEmail = `test_${Date.now()}@example.com`;
+            const testData = {
+                email: testEmail,
+                password: 'test123456',
+                name: '测试用户'
+            };
+
+            try {
+                const response = await fetch('http://localhost:8000/api/v1/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(testData),
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('registration-status').textContent = 
+                        `✅ 注册功能正常 - 用户ID: ${data.id.substring(0, 8)}...`;
+                    document.getElementById('registration-test').className = 'test-item success';
+                } else {
+                    const errorData = await response.json();
+                    document.getElementById('registration-status').textContent = 
+                        `❌ 注册失败: ${errorData.detail}`;
+                    document.getElementById('registration-test').className = 'test-item error';
+                }
+            } catch (error) {
+                document.getElementById('registration-status').textContent = '❌ 注册测试失败: ' + error.message;
+                document.getElementById('registration-test').className = 'test-item error';
+            }
+        }
+
+        // 测试登录功能
+        async function testLogin() {
+            const testData = {
+                email: 'admin@example.com',
+                password: 'admin123456'
+            };
+
+            try {
+                const response = await fetch('http://localhost:8000/api/v1/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(testData),
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('login-status').textContent = 
+                        `✅ 登录功能正常 - Token类型: ${data.token_type}`;
+                    document.getElementById('login-test').className = 'test-item success';
+                } else {
+                    const errorData = await response.json();
+                    document.getElementById('login-status').textContent = 
+                        `❌ 登录失败: ${errorData.detail}`;
+                    document.getElementById('login-test').className = 'test-item error';
+                }
+            } catch (error) {
+                document.getElementById('login-status').textContent = '❌ 登录测试失败: ' + error.message;
+                document.getElementById('login-test').className = 'test-item error';
+            }
+        }
+
+        // 页面加载时自动运行测试
+        window.addEventListener('load', function() {
+            testFrontend();
+            testBackend();
+            setTimeout(testCSS, 100); // 稍微延迟确保样式加载完成
+        });
+    </script>
+</body>
+</html> 

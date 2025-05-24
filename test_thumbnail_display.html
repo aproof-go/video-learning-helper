@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>缩略图测试</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .thumbnail { width: 200px; height: auto; margin: 10px; border: 1px solid #ccc; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h1>缩略图显示测试</h1>
+    
+    <div id="results"></div>
+    
+    <script>
+        const taskId = 'fdaaad07-cfb3-4f51-8114-f39bbc3b5d7b';
+        const resultsDiv = document.getElementById('results');
+        
+        // 测试分析结果加载
+        fetch(`http://localhost:8000/uploads/${taskId}_results.json`)
+            .then(response => response.json())
+            .then(data => {
+                resultsDiv.innerHTML += `<p class="success">✅ 分析结果加载成功，共 ${data.segments.length} 个片段</p>`;
+                
+                // 显示前3个片段的缩略图
+                data.segments.slice(0, 3).forEach((segment, index) => {
+                    const div = document.createElement('div');
+                    div.style.marginBottom = '20px';
+                    div.innerHTML = `
+                        <h3>片段 ${segment.segment_id}</h3>
+                        <p>时间: ${segment.start_time}s - ${segment.end_time}s</p>
+                        <p>场景类型: ${segment.scene_type}</p>
+                        <p>缩略图URL: ${segment.thumbnail_url || '❌ 无'}</p>
+                        <p>GIF URL: ${segment.gif_url || '❌ 无'}</p>
+                        ${segment.thumbnail_url ? 
+                            `<img src="http://localhost:8000${segment.thumbnail_url}" 
+                                  class="thumbnail" 
+                                  alt="片段 ${segment.segment_id}"
+                                  onload="console.log('✅ 缩略图加载成功:', this.src)"
+                                  onerror="console.error('❌ 缩略图加载失败:', this.src); this.style.border='2px solid red';"
+                             />` : 
+                            '<p class="error">无缩略图</p>'
+                        }
+                    `;
+                    resultsDiv.appendChild(div);
+                });
+            })
+            .catch(error => {
+                resultsDiv.innerHTML += `<p class="error">❌ 加载分析结果失败: ${error}</p>`;
+            });
+    </script>
+</body>
+</html> 
