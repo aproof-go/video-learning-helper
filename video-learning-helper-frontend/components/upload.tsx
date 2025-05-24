@@ -144,11 +144,11 @@ export function Upload() {
 
       // 获取 Supabase 配置
       const supabaseConfig = getSupabaseConfig()
-      const supabase = createClient(supabaseConfig.url!, supabaseConfig.anonKey!)
       
       console.log(`📤 Direct upload to Supabase (${getEnvironment()}):`);
       console.log(`  - File: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
       console.log(`  - Bucket: ${supabaseConfig.bucket}`);
+      console.log(`  - User: ${user.email}`);
 
       // 生成唯一文件名
       const timestamp = Date.now();
@@ -165,33 +165,42 @@ export function Upload() {
         });
       }, 500);
 
-      // 直接上传到 Supabase Storage
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from(supabaseConfig.bucket)
-        .upload(filePath, file, {
-          contentType: file.type,
-          duplex: 'half'
-        });
+      // 使用 fetch 直接上传到 Supabase Storage
+      const uploadUrl = `${supabaseConfig.url}/storage/v1/object/${supabaseConfig.bucket}/${filePath}`;
+      
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${supabaseConfig.anonKey}`,
+          'Content-Type': file.type,
+          'x-upsert': 'true'
+        },
+        body: file
+      });
 
       clearInterval(progressInterval);
       setUploadProgress(95);
 
-      if (uploadError) {
-        console.error('❌ Supabase Storage upload error:', uploadError);
+      if (!uploadResponse.ok) {
+        const errorData = await uploadResponse.text();
+        console.error('❌ Supabase Storage upload error:', errorData);
         
-        if (uploadError.message.includes('not found') || uploadError.message.includes('does not exist')) {
+        if (uploadResponse.status === 404) {
           throw new Error(`存储桶 "${supabaseConfig.bucket}" 不存在。请先在 Supabase Dashboard 中创建存储桶。`);
         }
         
-        throw new Error(`文件上传失败: ${uploadError.message}`);
+        if (errorData.includes('row-level security policy') || uploadResponse.status === 403) {
+          throw new Error(`存储权限不足。存储桶 "${supabaseConfig.bucket}" 需要配置上传权限策略。`);
+        }
+        
+        throw new Error(`文件上传失败 (${uploadResponse.status}): ${errorData}`);
       }
 
       // 获取文件公共URL
-      const { data: urlData } = supabase.storage
-        .from(supabaseConfig.bucket)
-        .getPublicUrl(filePath);
+      const publicUrl = `${supabaseConfig.url}/storage/v1/object/public/${supabaseConfig.bucket}/${filePath}`;
 
-      console.log(`✅ File uploaded successfully to ${supabaseConfig.bucket}: ${uploadData.path}`);
+      console.log(`✅ File uploaded successfully to ${supabaseConfig.bucket}: ${filePath}`);
+      console.log(`📁 Public URL: ${publicUrl}`);
 
       const generatedVideoId = `video_${timestamp}_${randomStr}`;
       setVideoId(generatedVideoId);
