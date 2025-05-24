@@ -17,7 +17,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+video-learning-helper-backend/lib/
 lib64/
 parts/
 sdist/
