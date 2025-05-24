@@ -26,6 +26,25 @@ const getEnvironment = (): 'development' | 'production' => {
   return 'development';
 };
 
+// 获取API基础URL
+const getApiBaseUrl = () => {
+  const environment = getEnvironment();
+  
+  switch (environment) {
+    case 'production':
+      // 生产环境：使用当前域名
+      if (typeof window !== 'undefined') {
+        return window.location.origin;
+      }
+      return '';
+    case 'development':
+      // 测试环境：本地开发
+      return process.env.NEXT_PUBLIC_DEV_API_URL || 'http://localhost:8000';
+    default:
+      return 'http://localhost:8000';
+  }
+};
+
 // 获取 Supabase 配置
 const getSupabaseConfig = () => {
   const environment = getEnvironment();
@@ -202,13 +221,42 @@ export function Upload() {
       console.log(`✅ File uploaded successfully to ${supabaseConfig.bucket}: ${filePath}`);
       console.log(`📁 Public URL: ${publicUrl}`);
 
-      const generatedVideoId = `video_${timestamp}_${randomStr}`;
-      setVideoId(generatedVideoId);
+      setUploadProgress(98);
+
+      // 创建视频记录
+      console.log('📝 Creating video record...');
+      const videoCreateData = {
+        title: title.trim(),
+        filename: file.name,
+        file_size: file.size,
+        file_url: publicUrl,
+        description: description.trim()
+      };
+
+      const videoResponse = await fetch(`${getApiBaseUrl()}/api/v1/videos`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(videoCreateData)
+      });
+
+      if (!videoResponse.ok) {
+        const errorData = await videoResponse.json().catch(() => ({}));
+        throw new Error(`创建视频记录失败: ${errorData.detail || videoResponse.statusText}`);
+      }
+
+      const videoRecord = await videoResponse.json();
+      const actualVideoId = videoRecord.id;
+
+      console.log(`✅ Video record created: ${actualVideoId}`);
+      setVideoId(actualVideoId);
       setUploadProgress(100);
 
       // 创建分析任务
       console.log('🔍 About to create analysis task with data:', {
-        video_id: generatedVideoId,
+        video_id: actualVideoId,
         video_segmentation: analysisOptions.videoSegmentation,
         transition_detection: analysisOptions.transitionDetection,
         audio_transcription: analysisOptions.audioTranscription,
@@ -216,7 +264,7 @@ export function Upload() {
       });
       
       await analysisApi.createTask({
-        video_id: generatedVideoId,
+        video_id: actualVideoId,
         video_segmentation: analysisOptions.videoSegmentation,
         transition_detection: analysisOptions.transitionDetection,
         audio_transcription: analysisOptions.audioTranscription,
@@ -227,7 +275,7 @@ export function Upload() {
 
       // 跳转到分析页面
       setTimeout(() => {
-        router.push(`/analysis/${generatedVideoId}`)
+        router.push(`/analysis/${actualVideoId}`)
       }, 2000)
 
     } catch (err) {
