@@ -14,7 +14,43 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useAuth } from "@/contexts/auth-context"
-import { videoApi, analysisApi, ApiError } from "@/lib/api"
+import { analysisApi, ApiError } from "@/lib/api"
+import { createClient } from '@supabase/supabase-js'
+
+// 环境检测函数
+const getEnvironment = (): 'development' | 'production' => {
+  if (typeof window !== 'undefined') {
+    if (window.location.hostname.includes('vercel.app')) return 'production';
+    if (window.location.hostname === 'localhost') return 'development';
+  }
+  return 'development';
+};
+
+// 获取 Supabase 配置
+const getSupabaseConfig = () => {
+  const environment = getEnvironment();
+  
+  switch (environment) {
+    case 'production':
+      return {
+        url: process.env.NEXT_PUBLIC_SUPABASE_URL_PROD || process.env.NEXT_PUBLIC_SUPABASE_URL,
+        anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY_PROD || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+        bucket: 'video-learning-prod'
+      };
+    case 'development':
+      return {
+        url: process.env.NEXT_PUBLIC_SUPABASE_URL_DEV || process.env.NEXT_PUBLIC_SUPABASE_URL,
+        anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY_DEV || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+        bucket: 'video-learning-test'
+      };
+    default:
+      return {
+        url: process.env.NEXT_PUBLIC_SUPABASE_URL,
+        anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+        bucket: 'video-learning-test'
+      };
+  }
+};
 
 export function Upload() {
   const router = useRouter()
@@ -97,6 +133,7 @@ export function Upload() {
 
     setUploadStatus("uploading")
     setError(null)
+    setUploadProgress(0)
 
     try {
       // 获取token
@@ -105,31 +142,72 @@ export function Upload() {
         throw new Error("请先登录")
       }
 
-      // 上传视频
-      const uploadResponse = await videoApi.upload(
-        file,
-        title.trim(),
-        description.trim(),
-        token,
-        (progress) => {
-          setUploadProgress(progress)
-        }
-      )
+      // 获取 Supabase 配置
+      const supabaseConfig = getSupabaseConfig()
+      const supabase = createClient(supabaseConfig.url!, supabaseConfig.anonKey!)
+      
+      console.log(`📤 Direct upload to Supabase (${getEnvironment()}):`);
+      console.log(`  - File: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
+      console.log(`  - Bucket: ${supabaseConfig.bucket}`);
 
-      setVideoId(uploadResponse.video_id)
+      // 生成唯一文件名
+      const timestamp = Date.now();
+      const randomStr = Math.random().toString(36).substring(2, 15);
+      const safeFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const fileName = `${timestamp}_${randomStr}_${safeFileName}`;
+      const filePath = `videos/${user.email}/${fileName}`;
+
+      // 模拟上传进度
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => {
+          const newProgress = prev + Math.random() * 15;
+          return newProgress >= 90 ? 90 : newProgress;
+        });
+      }, 500);
+
+      // 直接上传到 Supabase Storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from(supabaseConfig.bucket)
+        .upload(filePath, file, {
+          contentType: file.type,
+          duplex: 'half'
+        });
+
+      clearInterval(progressInterval);
+      setUploadProgress(95);
+
+      if (uploadError) {
+        console.error('❌ Supabase Storage upload error:', uploadError);
+        
+        if (uploadError.message.includes('not found') || uploadError.message.includes('does not exist')) {
+          throw new Error(`存储桶 "${supabaseConfig.bucket}" 不存在。请先在 Supabase Dashboard 中创建存储桶。`);
+        }
+        
+        throw new Error(`文件上传失败: ${uploadError.message}`);
+      }
+
+      // 获取文件公共URL
+      const { data: urlData } = supabase.storage
+        .from(supabaseConfig.bucket)
+        .getPublicUrl(filePath);
+
+      console.log(`✅ File uploaded successfully to ${supabaseConfig.bucket}: ${uploadData.path}`);
+
+      const generatedVideoId = `video_${timestamp}_${randomStr}`;
+      setVideoId(generatedVideoId);
+      setUploadProgress(100);
 
       // 创建分析任务
       console.log('🔍 About to create analysis task with data:', {
-        video_id: uploadResponse.video_id,
+        video_id: generatedVideoId,
         video_segmentation: analysisOptions.videoSegmentation,
         transition_detection: analysisOptions.transitionDetection,
         audio_transcription: analysisOptions.audioTranscription,
         report_generation: analysisOptions.reportGeneration,
-      })
-      console.log('🔑 Using token:', token ? 'Token exists' : 'Token missing')
+      });
       
       await analysisApi.createTask({
-        video_id: uploadResponse.video_id,
+        video_id: generatedVideoId,
         video_segmentation: analysisOptions.videoSegmentation,
         transition_detection: analysisOptions.transitionDetection,
         audio_transcription: analysisOptions.audioTranscription,
@@ -140,16 +218,11 @@ export function Upload() {
 
       // 跳转到分析页面
       setTimeout(() => {
-        router.push(`/analysis/${uploadResponse.video_id}`)
+        router.push(`/analysis/${generatedVideoId}`)
       }, 2000)
 
     } catch (err) {
       console.error('Upload error:', err)
-      console.error('Error details:', {
-        status: err instanceof ApiError ? err.status : 'unknown',
-        message: err instanceof ApiError ? err.message : err?.toString(),
-        stack: err instanceof Error ? err.stack : 'N/A'
-      })
       setUploadStatus("error")
       
       if (err instanceof ApiError) {
@@ -160,6 +233,8 @@ export function Upload() {
         } else {
           setError(err.message)
         }
+      } else if (err instanceof Error) {
+        setError(err.message)
       } else {
         setError("上传失败，请稍后重试")
       }
