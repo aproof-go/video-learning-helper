@@ -1,5 +1,9 @@
 {
-  "env": {
-    "NEXT_PUBLIC_API_URL": "https://your-backend-domain.railway.app"
+  "framework": "nextjs",
+  "installCommand": "npm install --legacy-peer-deps",
+  "functions": {
+    "app/api/**/*.ts": {
+      "maxDuration": 30
+    }
   }
 } 
