@@ -22,7 +22,7 @@ redis==5.0.1
 # 视频处理 - 使用更新的版本
 opencv-python==4.8.1.78
 opencv-contrib-python==4.8.1.78
-whisper-openai==20231117
+openai-whisper==20231117
 torch==2.1.1
 torchvision==0.16.1
 torchaudio==2.1.1
@@ -35,9 +35,6 @@ Pillow==10.1.0
 moviepy==1.0.3
 librosa==0.10.1
 soundfile==0.12.1
-
-# 音频处理与转写
-openai-whisper==20231117
 
 # PDF生成
 reportlab==4.0.7
