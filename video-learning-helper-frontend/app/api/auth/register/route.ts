@@ -2,6 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { dbManager } from '@/lib/supabase-server';
 import { createAccessToken, hashPassword, APIError } from '@/lib/auth';
 
+// 添加CORS头部
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Max-Age': '86400',
+};
+
+// 处理OPTIONS预检请求
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: corsHeaders,
+  });
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -10,7 +26,7 @@ export async function POST(request: NextRequest) {
     if (!email || !password || !name) {
       return NextResponse.json(
         { error: "邮箱、密码和姓名是必需的" },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -19,7 +35,7 @@ export async function POST(request: NextRequest) {
     if (!emailRegex.test(email)) {
       return NextResponse.json(
         { error: "邮箱格式不正确" },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -27,7 +43,7 @@ export async function POST(request: NextRequest) {
     if (password.length < 6) {
       return NextResponse.json(
         { error: "密码长度至少为6位" },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -36,7 +52,7 @@ export async function POST(request: NextRequest) {
     if (existingUser) {
       return NextResponse.json(
         { error: "该邮箱已被注册" },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -64,7 +80,7 @@ export async function POST(request: NextRequest) {
         name: newUser.name,
         created_at: newUser.created_at
       }
-    }, { status: 201 });
+    }, { status: 201, headers: corsHeaders });
 
   } catch (error) {
     console.error('注册错误:', error);
@@ -72,13 +88,13 @@ export async function POST(request: NextRequest) {
     if (error instanceof APIError) {
       return NextResponse.json(
         { error: error.message },
-        { status: error.statusCode }
+        { status: error.statusCode, headers: corsHeaders }
       );
     }
 
     return NextResponse.json(
-      { error: "服务器内部错误" },
-      { status: 500 }
+      { error: "数据库连接失败，请稍后再试" },
+      { status: 500, headers: corsHeaders }
     );
   }
 } 

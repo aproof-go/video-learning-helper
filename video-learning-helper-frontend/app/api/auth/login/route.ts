@@ -2,6 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 import { dbManager } from '@/lib/supabase-server';
 import { createAccessToken, verifyPassword, APIError } from '@/lib/auth';
 
+// 添加CORS头部
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Max-Age': '86400',
+};
+
+// 处理OPTIONS预检请求
+export async function OPTIONS(request: NextRequest) {
+  return new NextResponse(null, {
+    status: 200,
+    headers: corsHeaders,
+  });
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();

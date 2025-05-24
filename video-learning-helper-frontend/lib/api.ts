@@ -1,6 +1,21 @@
-// API配置
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-export const BACKEND_BASE_URL = API_BASE_URL
+// API配置 - 修复Vercel部署问题
+const getApiBaseUrl = () => {
+  // 如果设置了环境变量，使用环境变量
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    return process.env.NEXT_PUBLIC_API_URL;
+  }
+  
+  // 在浏览器环境中，使用当前域名
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+  
+  // 在服务器环境中，默认使用相对路径
+  return '';
+};
+
+const API_BASE_URL = getApiBaseUrl();
+export const BACKEND_BASE_URL = API_BASE_URL;
 
 // API请求类型
 export interface LoginRequest {
@@ -206,7 +221,7 @@ async function uploadRequest<T>(
 export const authApi = {
   // 用户注册
   register: async (data: RegisterRequest): Promise<UserResponse> => {
-    return apiRequest<UserResponse>('/api/v1/auth/register', {
+    return apiRequest<UserResponse>('/api/auth/register', {
       method: 'POST',
       body: JSON.stringify(data),
     })
@@ -214,7 +229,7 @@ export const authApi = {
 
   // 用户登录
   login: async (data: LoginRequest): Promise<AuthResponse> => {
-    return apiRequest<AuthResponse>('/api/v1/auth/login', {
+    return apiRequest<AuthResponse>('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify(data),
     })
@@ -222,7 +237,7 @@ export const authApi = {
 
   // 获取当前用户信息
   getCurrentUser: async (token: string): Promise<UserResponse> => {
-    return apiRequest<UserResponse>('/api/v1/auth/me', {
+    return apiRequest<UserResponse>('/api/users/me', {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -245,7 +260,7 @@ export const videoApi = {
     formData.append('title', title)
     formData.append('description', description)
     
-    return uploadRequest<UploadResponse>('/api/v1/videos/upload', formData, token, onProgress)
+    return uploadRequest<UploadResponse>('/api/videos/upload', formData, token, onProgress)
   },
 
   // 获取用户视频列表
@@ -255,7 +270,7 @@ export const videoApi = {
       limit: limit.toString(),
       include_tasks: includeTasks.toString()
     })
-    return apiRequest<VideoResponse[]>(`/api/v1/videos/?${params}`, {
+    return apiRequest<VideoResponse[]>(`/api/videos/?${params}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -264,7 +279,7 @@ export const videoApi = {
 
   // 获取视频详情
   getVideo: async (videoId: string, token: string): Promise<VideoResponse> => {
-    return apiRequest<VideoResponse>(`/api/v1/videos/${videoId}`, {
+    return apiRequest<VideoResponse>(`/api/videos/${videoId}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -273,7 +288,7 @@ export const videoApi = {
 
   // 删除视频
   deleteVideo: async (videoId: string, token: string): Promise<{ message: string }> => {
-    return apiRequest<{ message: string }>(`/api/v1/videos/${videoId}`, {
+    return apiRequest<{ message: string }>(`/api/videos/${videoId}`, {
       method: 'DELETE',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -299,12 +314,12 @@ export const analysisApi = {
     
     console.log('📤 API: Request config:', requestConfig)
     
-    return apiRequest<AnalysisTaskResponse>('/api/v1/analysis/tasks', requestConfig)
+    return apiRequest<AnalysisTaskResponse>('/api/analysis/tasks', requestConfig)
   },
 
   // 获取用户分析任务列表
   getUserTasks: async (token: string, skip = 0, limit = 100): Promise<AnalysisTaskResponse[]> => {
-    return apiRequest<AnalysisTaskResponse[]>(`/api/v1/analysis/tasks?skip=${skip}&limit=${limit}`, {
+    return apiRequest<AnalysisTaskResponse[]>(`/api/analysis/tasks?skip=${skip}&limit=${limit}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -313,7 +328,7 @@ export const analysisApi = {
 
   // 获取分析任务详情
   getTask: async (taskId: string, token: string): Promise<AnalysisTaskResponse> => {
-    return apiRequest<AnalysisTaskResponse>(`/api/v1/analysis/tasks/${taskId}`, {
+    return apiRequest<AnalysisTaskResponse>(`/api/analysis/tasks/${taskId}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -322,7 +337,7 @@ export const analysisApi = {
 
   // 获取视频的分析任务
   getVideoTasks: async (videoId: string, token: string): Promise<AnalysisTaskResponse[]> => {
-    return apiRequest<AnalysisTaskResponse[]>(`/api/v1/analysis/videos/${videoId}/tasks`, {
+    return apiRequest<AnalysisTaskResponse[]>(`/api/analysis/videos/${videoId}/tasks`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -339,7 +354,7 @@ export const systemApi = {
       version: string
       database: string
       user_count: number
-    }>('/health')
+    }>('/api/health')
   },
 }
 
