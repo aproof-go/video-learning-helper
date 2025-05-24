@@ -2,6 +2,27 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUserFromRequest, APIError } from '@/lib/auth';
 import { supabaseServer } from '@/lib/supabase-server';
 
+// 环境检测函数
+const getEnvironment = (): 'development' | 'production' => {
+  if (process.env.VERCEL_ENV === 'production') return 'production';
+  if (process.env.NODE_ENV === 'production') return 'production';
+  return 'development';
+};
+
+// 获取存储桶名称
+const getStorageBucket = () => {
+  const environment = getEnvironment();
+  
+  switch (environment) {
+    case 'production':
+      return process.env.SUPABASE_STORAGE_BUCKET_PROD || 'video-learning-prod';
+    case 'development':
+      return process.env.SUPABASE_STORAGE_BUCKET_DEV || 'video-learning-test';
+    default:
+      return 'video-learning-test';
+  }
+};
+
 // 添加CORS头部
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -52,16 +73,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 验证文件大小 (500MB限制 - Supabase Storage限制)
-    const maxSize = 500 * 1024 * 1024; // 500MB
+    // 验证文件大小 (1GB限制)
+    const maxSize = 1024 * 1024 * 1024; // 1GB = 1024MB
     if (file.size > maxSize) {
       return NextResponse.json(
-        { error: "文件大小不能超过500MB。如需上传更大文件，请联系管理员。" },
+        { error: "文件大小不能超过1GB。如需上传更大文件，请联系管理员。" },
         { status: 400, headers: corsHeaders }
       );
     }
 
-    console.log(`📤 Uploading file: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
+    const environment = getEnvironment();
+    const storageBucket = getStorageBucket();
+    
+    console.log(`📤 Uploading file in ${environment} environment:`);
+    console.log(`  - File: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
+    console.log(`  - Bucket: ${storageBucket}`);
 
     // 生成唯一文件名
     const timestamp = Date.now();
@@ -73,7 +99,7 @@ export async function POST(request: NextRequest) {
     // 上传到Supabase Storage
     const fileBuffer = await file.arrayBuffer();
     const { data: uploadData, error: uploadError } = await supabaseServer.storage
-      .from('uploads')
+      .from(storageBucket)
       .upload(filePath, fileBuffer, {
         contentType: file.type,
         duplex: 'half'
@@ -82,20 +108,9 @@ export async function POST(request: NextRequest) {
     if (uploadError) {
       console.error('❌ Supabase Storage upload error:', uploadError);
       
-      if (uploadError.message.includes('row-level security')) {
-        // 如果是RLS错误，尝试创建存储桶
-        const { error: bucketError } = await supabaseServer.storage
-          .createBucket('uploads', {
-            public: false,
-            allowedMimeTypes: allowedTypes
-          });
-        
-        if (bucketError && !bucketError.message.includes('already exists')) {
-          console.error('❌ Bucket creation error:', bucketError);
-        }
-        
+      if (uploadError.message.includes('row-level security') || uploadError.message.includes('not found')) {
         return NextResponse.json(
-          { error: "存储服务配置错误，请联系管理员" },
+          { error: `存储桶 "${storageBucket}" 不存在或配置错误。请先在 Supabase Dashboard 中创建存储桶。` },
           { status: 500, headers: corsHeaders }
         );
       }
@@ -108,10 +123,10 @@ export async function POST(request: NextRequest) {
 
     // 获取文件公共URL
     const { data: urlData } = supabaseServer.storage
-      .from('uploads')
+      .from(storageBucket)
       .getPublicUrl(filePath);
 
-    console.log(`✅ File uploaded successfully: ${uploadData.path}`);
+    console.log(`✅ File uploaded successfully to ${storageBucket}: ${uploadData.path}`);
 
     // 返回文件信息
     return NextResponse.json({
