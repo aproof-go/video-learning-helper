@@ -1,25 +1,11 @@
-# Web框架
+# 部署专用 - 最小依赖集
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
-
-# 数据库
 supabase==2.0.0
-
-# 认证
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 python-multipart==0.0.6
-bcrypt==4.1.1
-
-# 基础工具库
 pydantic==2.5.0
 python-dotenv==1.0.0
-httpx==0.24.1
 aiofiles==23.2.1
-
-# 视频处理（简化版）
-Pillow==10.1.0
-
-# 开发工具
-pytest==7.4.3
-pytest-asyncio==0.21.1 
+Pillow==10.1.0 
