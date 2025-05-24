@@ -1,51 +1,7 @@
 import os
-# 部署模式 - 如果重型依赖不可用，使用模拟数据
-DEPLOYMENT_MODE = os.getenv("DEPLOYMENT_MODE", "false").lower() == "true"
-
-try:
-    import cv2
-    CV2_AVAILABLE = True
-except ImportError:
-    CV2_AVAILABLE = False
-    if DEPLOYMENT_MODE:
-        # 在部署模式下创建模拟的cv2模块
-        class MockCV2:
-            CAP_PROP_FPS = 5
-            CAP_PROP_FRAME_COUNT = 7
-            CAP_PROP_FRAME_WIDTH = 3
-            CAP_PROP_FRAME_HEIGHT = 4
-            
-            class VideoCapture:
-                def __init__(self, path):
-                    self.path = path
-                
-                def isOpened(self):
-                    return True
-                
-                def get(self, prop):
-                    if prop == 5:  # CAP_PROP_FPS
-                        return 25.0
-                    elif prop == 7:  # CAP_PROP_FRAME_COUNT
-                        return 1500
-                    elif prop == 3:  # CAP_PROP_FRAME_WIDTH
-                        return 1920
-                    elif prop == 4:  # CAP_PROP_FRAME_HEIGHT
-                        return 1080
-                    return 0
-                
-                def read(self):
-                    return True, None
-                
-                def release(self):
-                    pass
-                
-                def set(self, prop, value):
-                    return True
-        
-        cv2 = MockCV2()
-        CV2_AVAILABLE = True
-
+import cv2
 import numpy as np
+
 try:
     import librosa
     import soundfile as sf
@@ -60,29 +16,6 @@ try:
     SKLEARN_AVAILABLE = True
 except ImportError:
     SKLEARN_AVAILABLE = False
-    if DEPLOYMENT_MODE:
-        # 模拟sklearn
-        class MockKMeans:
-            def __init__(self, n_clusters=3, random_state=42):
-                self.n_clusters = n_clusters
-                self.labels_ = None
-                
-            def fit(self, data):
-                self.labels_ = np.random.randint(0, self.n_clusters, len(data))
-                return self
-        
-        class MockSklearn:
-            class cluster:
-                KMeans = MockKMeans
-        
-        import sys
-        sys.modules['sklearn'] = MockSklearn()
-        sys.modules['sklearn.cluster'] = MockSklearn.cluster()
-        
-        def euclidean(a, b):
-            return np.linalg.norm(np.array(a) - np.array(b))
-        
-        SKLEARN_AVAILABLE = True
 
 try:
     import matplotlib.pyplot as plt
@@ -291,62 +224,6 @@ class VideoAnalyzer:
         segments = []
         
         print(f"🔍 AI分析器 _segment_video 被调用！视频路径: {video_path}")
-        
-        # 部署模式下返回模拟数据
-        if DEPLOYMENT_MODE and not CV2_AVAILABLE:
-            logger.info("部署模式：返回模拟视频分段数据")
-            if progress_callback:
-                progress_callback("25", "生成模拟分段数据")
-            
-            # 生成3个模拟片段
-            mock_segments = [
-                {
-                    "segment_id": 1,
-                    "start_time": 0.0,
-                    "end_time": 30.0,
-                    "duration": 30.0,
-                    "scene_type": "开场介绍",
-                    "frame_count": 750,
-                    "composition_analysis": "中心构图，主体突出，背景简洁",
-                    "camera_movement": "固定镜头，平稳拍摄",
-                    "theme_analysis": "展示开场内容，氛围轻松",
-                    "critical_review": "此片段作为开场，有效建立了整体氛围",
-                    "transcript_text": "",
-                    "thumbnail_url": None,
-                    "gif_url": None
-                },
-                {
-                    "segment_id": 2,
-                    "start_time": 30.0,
-                    "end_time": 90.0,
-                    "duration": 60.0,
-                    "scene_type": "主要内容",
-                    "frame_count": 1500,
-                    "composition_analysis": "三分法构图，层次丰富",
-                    "camera_movement": "缓慢推进，增强参与感",
-                    "theme_analysis": "深入展示核心内容，信息密集",
-                    "critical_review": "此片段是整个视频的重点，信息传达效果良好",
-                    "transcript_text": "",
-                    "thumbnail_url": None,
-                    "gif_url": None
-                },
-                {
-                    "segment_id": 3,
-                    "start_time": 90.0,
-                    "end_time": 120.0,
-                    "duration": 30.0,
-                    "scene_type": "结尾总结",
-                    "frame_count": 750,
-                    "composition_analysis": "对称构图，平衡稳定",
-                    "camera_movement": "静态镜头，强调稳定感",
-                    "theme_analysis": "总结性内容，回顾要点",
-                    "critical_review": "此片段很好地总结了前面的内容，形成完整闭环",
-                    "transcript_text": "",
-                    "thumbnail_url": None,
-                    "gif_url": None
-                }
-            ]
-            return mock_segments
         
         try:
             cap = cv2.VideoCapture(str(video_path))
