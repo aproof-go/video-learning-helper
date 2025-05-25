@@ -331,7 +331,7 @@ export const videoApi = {
       limit: limit.toString(),
       include_tasks: includeTasks.toString()
     })
-    return apiRequest<VideoResponse[]>(`/api/videos/?${params}`, {
+    return apiRequest<VideoResponse[]>(`/api/v1/videos?${params}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -340,7 +340,7 @@ export const videoApi = {
 
   // 获取视频详情
   getVideo: async (videoId: string, token: string): Promise<VideoResponse> => {
-    return apiRequest<VideoResponse>(`/api/videos/${videoId}`, {
+    return apiRequest<VideoResponse>(`/api/v1/videos/${videoId}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -349,7 +349,7 @@ export const videoApi = {
 
   // 删除视频
   deleteVideo: async (videoId: string, token: string): Promise<{ message: string }> => {
-    return apiRequest<{ message: string }>(`/api/videos/${videoId}`, {
+    return apiRequest<{ message: string }>(`/api/v1/videos/${videoId}`, {
       method: 'DELETE',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -375,12 +375,12 @@ export const analysisApi = {
     
     console.log('📤 API: Request config:', requestConfig)
     
-    return apiRequest<AnalysisTaskResponse>('/api/analysis/tasks', requestConfig)
+    return apiRequest<AnalysisTaskResponse>('/api/v1/analysis/tasks', requestConfig)
   },
 
   // 获取用户分析任务列表
   getUserTasks: async (token: string, skip = 0, limit = 100): Promise<AnalysisTaskResponse[]> => {
-    return apiRequest<AnalysisTaskResponse[]>(`/api/analysis/tasks?skip=${skip}&limit=${limit}`, {
+    return apiRequest<AnalysisTaskResponse[]>(`/api/v1/analysis/tasks?skip=${skip}&limit=${limit}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -389,7 +389,7 @@ export const analysisApi = {
 
   // 获取分析任务详情
   getTask: async (taskId: string, token: string): Promise<AnalysisTaskResponse> => {
-    return apiRequest<AnalysisTaskResponse>(`/api/analysis/tasks/${taskId}`, {
+    return apiRequest<AnalysisTaskResponse>(`/api/v1/analysis/tasks/${taskId}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -398,7 +398,7 @@ export const analysisApi = {
 
   // 获取视频的分析任务
   getVideoTasks: async (videoId: string, token: string): Promise<AnalysisTaskResponse[]> => {
-    return apiRequest<AnalysisTaskResponse[]>(`/api/analysis/videos/${videoId}/tasks`, {
+    return apiRequest<AnalysisTaskResponse[]>(`/api/v1/analysis/videos/${videoId}/tasks`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分析任务 API 测试</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .section { margin: 20px 0; padding: 20px; border: 1px solid #ccc; border-radius: 5px; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 3px; overflow-x: auto; }
+        button { padding: 10px 20px; margin: 5px; }
+        input, textarea { width: 100%; padding: 5px; margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <h1>分析任务 API 测试</h1>
+    
+    <div class="section">
+        <h2>1. 创建视频记录</h2>
+        <div>
+            <label>标题: </label>
+            <input type="text" id="videoTitle" value="测试视频" />
+        </div>
+        <div>
+            <label>描述: </label>
+            <input type="text" id="videoDescription" value="测试描述" />
+        </div>
+        <div>
+            <label>文件名: </label>
+            <input type="text" id="videoFilename" value="test.mp4" />
+        </div>
+        <div>
+            <label>用户ID (伪造): </label>
+            <input type="text" id="videoUserId" value="test-user-id" />
+        </div>
+        <button onclick="createVideo()">创建视频记录</button>
+        <pre id="videoResult"></pre>
+    </div>
+
+    <div class="section">
+        <h2>2. 创建分析任务</h2>
+        <div>
+            <label>视频ID: </label>
+            <input type="text" id="analysisVideoId" value="" />
+        </div>
+        <div>
+            <label>
+                <input type="checkbox" id="videoSegmentation" checked /> 视频分割
+            </label>
+        </div>
+        <div>
+            <label>
+                <input type="checkbox" id="transitionDetection" checked /> 转场检测
+            </label>
+        </div>
+        <div>
+            <label>
+                <input type="checkbox" id="audioTranscription" checked /> 音频转录
+            </label>
+        </div>
+        <div>
+            <label>
+                <input type="checkbox" id="reportGeneration" checked /> 报告生成
+            </label>
+        </div>
+        <button onclick="createAnalysisTask()">创建分析任务</button>
+        <pre id="analysisResult"></pre>
+    </div>
+
+    <script>
+        // 有效的 JWT token
+        const mockToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0LXVzZXJAZXhhbXBsZS5jb20iLCJleHAiOjE3NDgyMDU4NjAsImlhdCI6MTc0ODExOTQ2MH0.NcqSZ4Z_gKGWh7UBBr3VQ6aO-EQiRA6BuvMr71h29Qg";
+
+        async function createVideo() {
+            const videoData = {
+                title: document.getElementById('videoTitle').value,
+                description: document.getElementById('videoDescription').value,
+                filename: document.getElementById('videoFilename').value,
+                file_size: 1024000,
+                status: 'uploaded',
+                user_id: document.getElementById('videoUserId').value
+            };
+
+            try {
+                const response = await fetch('/api/v1/videos', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${mockToken}`
+                    },
+                    body: JSON.stringify(videoData)
+                });
+
+                const result = await response.json();
+                document.getElementById('videoResult').textContent = JSON.stringify(result, null, 2);
+                
+                if (result.id) {
+                    document.getElementById('analysisVideoId').value = result.id;
+                }
+            } catch (error) {
+                document.getElementById('videoResult').textContent = 'Error: ' + error.message;
+            }
+        }
+
+        async function createAnalysisTask() {
+            const taskData = {
+                video_id: document.getElementById('analysisVideoId').value,
+                video_segmentation: document.getElementById('videoSegmentation').checked,
+                transition_detection: document.getElementById('transitionDetection').checked,
+                audio_transcription: document.getElementById('audioTranscription').checked,
+                report_generation: document.getElementById('reportGeneration').checked
+            };
+
+            try {
+                console.log('🚀 发送分析任务数据:', taskData);
+                
+                const response = await fetch('/api/v1/analysis/tasks', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${mockToken}`
+                    },
+                    body: JSON.stringify(taskData)
+                });
+
+                console.log('📦 响应状态:', response.status);
+                const result = await response.json();
+                console.log('📋 响应数据:', result);
+                
+                document.getElementById('analysisResult').textContent = JSON.stringify(result, null, 2);
+            } catch (error) {
+                console.error('❌ 请求错误:', error);
+                document.getElementById('analysisResult').textContent = 'Error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html> 

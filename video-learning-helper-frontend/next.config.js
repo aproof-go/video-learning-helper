@@ -1,16 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // 开发模式优化
+  // 实验性功能（针对Next.js 15优化）
   experimental: {
-    // 启用 Turbopack (更快的开发服务器)
-    turbo: {
-      rules: {
-        '*.svg': {
-          loaders: ['@svgr/webpack'],
-          as: '*.js',
-        },
-      },
-    },
+    // 移除deprecated的turbo配置
   },
 
   // 热更新配置
@@ -26,35 +18,24 @@ const nextConfig = {
     return config
   },
 
-  // 开发服务器配置
+  // 开发服务器配置（修复Next.js 15兼容性）
   devIndicators: {
-    buildActivity: true,
-    buildActivityPosition: 'bottom-right',
+    position: 'bottom-left', // 修复: 使用position替代已废弃的buildActivityPosition
   },
 
-  // 编译优化
-  swcMinify: true,
+  // 移除已废弃的swcMinify配置
   
   // 图片优化
   images: {
-    domains: ['localhost', '127.0.0.1'],
+    domains: ['localhost', '127.0.0.1', 'tjxqzmrmybrcmkflaimq.supabase.co'],
     unoptimized: process.env.NODE_ENV === 'development',
   },
 
-  // API路由配置
-  async rewrites() {
-    return [
-      {
-        source: '/api/backend/:path*',
-        destination: 'http://localhost:8000/api/:path*',
-      },
-    ]
-  },
-
+  // 移除API重写规则 - 使用纯Next.js API Routes
+  
   // 环境变量
   env: {
-    BACKEND_URL: process.env.BACKEND_URL || 'http://localhost:8000',
-    FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:3000',
+    FRONTEND_URL: process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? process.env.VERCEL_URL : 'http://localhost:3000'),
   },
 
   // 输出配置
